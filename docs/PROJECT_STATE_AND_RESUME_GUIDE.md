@@ -122,12 +122,35 @@ When you finish resetting your laptop, follow these steps to resume work in unde
 
 ---
 
-## 🎯 Exactly Where We Resume: Phase 2 (Backend Foundation)
+## 🎯 Progress Milestones
 
-Once the database is seeded and `uv` is running, we immediately begin **Phase 2**:
+### Phase 1: Database & Data Ingestion (✅ Complete)
+* PostgreSQL 16 running via Docker Compose (`olist_postgres`).
+* All 7 tables created with foreign keys and indexes.
+* ~550,000 records seeded from Olist dataset (99,441 orders).
+* Dedicated `olist_readonly` user configured with least-privilege `SELECT`.
 
-1. **`backend/app/core/config.py`**: Pydantic `BaseSettings` class loading environment variables with strict type validation.
-2. **`backend/app/core/semantic_layer.yaml`**: The business metric dictionary defining calculations (GMV, AOV, Churn, CSAT, On-time delivery rate) and table join graphs.
-3. **`backend/app/db/duckdb_client.py`**: Thread-safe DuckDB analytical connection manager connecting to PostgreSQL via `postgres_scanner`.
-4. **`backend/app/core/validator.py`**: Abstract Syntax Tree (AST) validation using `sqlglot` that verifies generated queries are 100% read-only `SELECT` statements.
-5. **`backend/app/main.py`**: FastAPI application entry point with `/health` and `/api/v1/query` endpoints.
+### Phase 2: FastAPI Backend Foundation & Analytical Semantic Layer (✅ Complete)
+* **`backend/app/core/config.py`**: Pydantic `BaseSettings` loading `.env` variables with strict type validation.
+* **`backend/app/core/semantic_layer.yaml`**: Standard business metric definitions (GMV, AOV, CSAT, On-Time Delivery Rate) and canonical join graphs.
+* **`backend/app/core/validator.py`**: SQL AST validation using `sqlglot` enforcing strictly read-only `SELECT` statements and schema table guardrails.
+* **`backend/app/db/duckdb_client.py`**: In-memory DuckDB OLAP manager attached to PostgreSQL via `postgres_scanner` with `memory.main` logical views.
+* **`backend/app/main.py`**: FastAPI application exposing `/health`, `/api/v1/query`, `/api/v1/validate`, `/api/v1/semantic-layer`, `/api/v1/metrics`, and `/api/v1/schema`.
+* **Testing Suite**: 23 automated unit and integration tests passing (`pytest`) verifying AST validation, database latency, and API endpoints.
+
+---
+
+## 🚀 Next Milestone: Phase 3 (LangGraph Multi-Agent Pod)
+
+With the backend foundation and DuckDB OLAP engine in place, we proceed to **Phase 3**:
+
+1. **`backend/app/agent/llm_factory.py`**: Dual-provider LLM abstraction supporting Google AI Studio (Gemini 2.5 Flash free tier) and local Ollama (`qwen2.5-coder:7b`).
+2. **`backend/app/agent/state.py`**: Pydantic `AgentState` schema tracking user query, pruned schema, candidate SQL, AST validation status, execution outputs, reflection trace, and narrative visualization spec.
+3. **`backend/app/agent/nodes/`**:
+   * `schema_pruner.py`: Filters the schema down to only relevant tables and metrics.
+   * `sql_generator.py`: Generates few-shot DuckDB SQL grounded in `semantic_layer.yaml`.
+   * `sql_critic.py`: Adversarial QA evaluating logic, edge cases, and query plan efficiency.
+   * `query_executor.py`: Runs SQL against `DuckDBManager` with 3-attempt reflection loop.
+   * `storyteller.py`: Synthesizes executive bullet points and typed Recharts JSON specs.
+4. **`backend/app/api/v1/chat.py`**: Server-Sent Events (SSE) streaming endpoint for live real-time token/status streaming.
+

@@ -1,0 +1,190 @@
+version: "1.0"
+domain: "Olist Brazilian E-Commerce"
+description: >
+  Comprehensive semantic layer defining business metrics, dimensional hierarchies,
+  table schemas, and canonical join graphs for the Olist dataset.
+
+tables:
+  orders:
+    description: "Core transactional table containing order lifecycle and timestamps."
+    primary_key: ["order_id"]
+    columns:
+      order_id: "Unique 32-character identifier for each order."
+      customer_id: "Foreign key referencing customers.customer_id for this specific order."
+      order_status: "Order status: 'delivered', 'shipped', 'canceled', 'invoiced', 'processing', 'unavailable'."
+      purchase_timestamp: "Timestamp when the order was placed by the customer."
+      approved_at: "Timestamp when payment was approved."
+      delivered_carrier_date: "Timestamp when order was handed over to logistics partner."
+      delivered_customer_date: "Actual timestamp when the package reached the customer."
+      estimated_delivery_date: "Expected delivery timestamp promised to customer at checkout."
+
+  customers:
+    description: "Customer demographic and geographic records."
+    primary_key: ["customer_id"]
+    columns:
+      customer_id: "Per-order customer key."
+      customer_unique_id: "Unique identifier of the physical person (used to calculate repeat buyers/retention)."
+      zip_code_prefix: "First 5 digits of Brazilian postal code."
+      city: "Customer city (e.g., 'sao paulo', 'rio de janeiro')."
+      state: "Two-letter Brazilian state abbreviation (e.g., 'SP', 'RJ', 'MG')."
+
+  products:
+    description: "Product catalog translated to English with physical specs."
+    primary_key: ["product_id"]
+    columns:
+      product_id: "Unique product identifier."
+      category_name: "English category name (e.g., 'bed_bath_table', 'health_beauty', 'watches_gifts')."
+      name_length: "Length of the product title."
+      description_length: "Length of the product description text."
+      photos_qty: "Number of published product photos."
+      weight_g: "Weight in grams."
+
+  sellers:
+    description: "Merchant seller geographic and location details."
+    primary_key: ["seller_id"]
+    columns:
+      seller_id: "Unique merchant seller identifier."
+      zip_code_prefix: "First 5 digits of seller postal code."
+      city: "Seller city."
+      state: "Two-letter Brazilian state abbreviation."
+
+  order_items:
+    description: "Line-item level details linking products, sellers, and pricing per order."
+    primary_key: ["order_id", "order_item_id"]
+    columns:
+      order_id: "Foreign key referencing orders.order_id."
+      order_item_id: "Sequential item number within the order (1, 2, 3...)."
+      product_id: "Foreign key referencing products.product_id."
+      seller_id: "Foreign key referencing sellers.seller_id."
+      shipping_limit_date: "Seller deadline to ship order to logistics partner."
+      price: "Item sale price in BRL (excluding shipping)."
+      freight_value: "Freight and shipping charges allocated to this item in BRL."
+
+  order_payments:
+    description: "Payment instruments, installments, and payment transaction amounts."
+    primary_key: ["order_id", "payment_sequential"]
+    columns:
+      order_id: "Foreign key referencing orders.order_id."
+      payment_sequential: "Sequential index of payment method used."
+      payment_type: "Method: 'credit_card', 'boleto', 'voucher', 'debit_card'."
+      payment_installments: "Number of installments selected by customer."
+      payment_value: "Amount charged for this payment method."
+
+  order_reviews:
+    description: "Customer feedback ratings and review text."
+    primary_key: ["review_id", "order_id"]
+    columns:
+      review_id: "Unique review identifier."
+      order_id: "Foreign key referencing orders.order_id."
+      review_score: "Customer rating integer from 1 (terrible) to 5 (excellent)."
+      review_comment_title: "Optional title left by reviewer."
+      review_comment_message: "Optional comment text left by reviewer."
+      review_creation_date: "Timestamp when review survey was sent to customer."
+      review_answer_timestamp: "Timestamp when review response was submitted."
+
+relationships:
+  - name: "orders_to_customers"
+    from_table: "orders"
+    from_column: "customer_id"
+    to_table: "customers"
+    to_column: "customer_id"
+    join_type: "INNER JOIN"
+
+  - name: "orders_to_order_items"
+    from_table: "orders"
+    from_column: "order_id"
+    to_table: "order_items"
+    to_column: "order_id"
+    join_type: "INNER JOIN"
+
+  - name: "order_items_to_products"
+    from_table: "order_items"
+    from_column: "product_id"
+    to_table: "products"
+    to_column: "product_id"
+    join_type: "INNER JOIN"
+
+  - name: "order_items_to_sellers"
+    from_table: "order_items"
+    from_column: "seller_id"
+    to_table: "sellers"
+    to_column: "seller_id"
+    join_type: "INNER JOIN"
+
+  - name: "orders_to_order_payments"
+    from_table: "orders"
+    from_column: "order_id"
+    to_table: "order_payments"
+    to_column: "order_id"
+    join_type: "INNER JOIN"
+
+  - name: "orders_to_order_reviews"
+    from_table: "orders"
+    from_column: "order_id"
+    to_table: "order_reviews"
+    to_column: "order_id"
+    join_type: "LEFT JOIN"
+
+metrics:
+  gmv:
+    name: "Gross Merchandise Value (GMV)"
+    description: "Total revenue generated from purchased items on delivered orders."
+    sql_expression: "ROUND(SUM(oi.price), 2)"
+    required_tables: ["orders", "order_items"]
+    default_filters: ["orders.order_status = 'delivered'"]
+
+  aov:
+    name: "Average Order Value (AOV)"
+    description: "Average revenue generated per distinct delivered order."
+    sql_expression: "ROUND(SUM(oi.price) / COUNT(DISTINCT orders.order_id), 2)"
+    required_tables: ["orders", "order_items"]
+    default_filters: ["orders.order_status = 'delivered'"]
+
+  order_volume:
+    name: "Total Orders"
+    description: "Total count of distinct orders placed."
+    sql_expression: "COUNT(DISTINCT orders.order_id)"
+    required_tables: ["orders"]
+
+  csat:
+    name: "Customer Satisfaction Score (CSAT)"
+    description: "Average review score on a 1.0 to 5.0 scale."
+    sql_expression: "ROUND(AVG(order_reviews.review_score), 2)"
+    required_tables: ["orders", "order_reviews"]
+
+  on_time_delivery_rate:
+    name: "On-Time Delivery Rate (%)"
+    description: "Percentage of delivered orders that reached the customer on or before the estimated delivery date."
+    sql_expression: >
+      ROUND(100.0 * COUNT(CASE WHEN orders.delivered_customer_date <= orders.estimated_delivery_date THEN 1 END) /
+      NULLIF(COUNT(CASE WHEN orders.delivered_customer_date IS NOT NULL THEN 1 END), 0), 2)
+    required_tables: ["orders"]
+    default_filters: ["orders.order_status = 'delivered'"]
+
+  avg_delivery_duration_days:
+    name: "Average Delivery Duration (Days)"
+    description: "Average calendar days between order purchase timestamp and customer delivery."
+    sql_expression: >
+      ROUND(AVG(DATE_DIFF('day', orders.purchase_timestamp, orders.delivered_customer_date)), 1)
+    required_tables: ["orders"]
+    default_filters: ["orders.order_status = 'delivered' AND orders.delivered_customer_date IS NOT NULL"]
+
+  repeat_buyer_rate:
+    name: "Repeat Customer Rate (%)"
+    description: "Percentage of customers who made more than 1 purchase."
+    sql_expression: >
+      ROUND(100.0 * COUNT(DISTINCT CASE WHEN order_count > 1 THEN customer_unique_id END) /
+      COUNT(DISTINCT customer_unique_id), 2)
+    required_tables: ["customers", "orders"]
+
+dialect_rules:
+  engine: "DuckDB"
+  date_functions:
+    extract_year: "EXTRACT(year FROM timestamp_col)"
+    extract_month: "EXTRACT(month FROM timestamp_col)"
+    date_trunc: "DATE_TRUNC('month', timestamp_col)"
+    date_diff_days: "DATE_DIFF('day', start_date, end_date)"
+    date_add_interval: "timestamp_col + INTERVAL 1 MONTH"
+  null_safety:
+    nullif_zero: "NULLIF(expression, 0)"
+    coalesce_default: "COALESCE(expression, 0)"
