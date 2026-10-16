@@ -140,17 +140,32 @@ When you finish resetting your laptop, follow these steps to resume work in unde
 
 ---
 
-## 🚀 Next Milestone: Phase 3 (LangGraph Multi-Agent Pod)
+### Phase 3: LangGraph Multi-Agent Pod & Self-Healing Loop (✅ Complete)
+* **`backend/app/agent/llm_factory.py`**: Dual-provider LLM factory supporting Google AI Studio (Gemini 2.5 Flash), local Ollama (`qwen2.5-coder:7b`), and zero-cloud fallback.
+* **`backend/app/agent/state.py`**: Pydantic `AgentState` and `ChartSpec` schema tracking user query, schema pruning, candidate SQL, reflection cycles, and Recharts specs.
+* **4-Agent Collaborative Pod (`backend/app/agent/nodes/`)**:
+  * `orchestrator.py`: Classifies intent and prunes schema to relevant tables and metrics.
+  * `sql_engineer.py`: Crafts optimized DuckDB SQL incorporating self-healing reflection context.
+  * `sql_critic.py`: Adversarially checks AST safety and semantic metric requirements.
+  * `executor.py`: Runs SQL against `DuckDBManager` and captures execution errors.
+  * `storyteller.py`: Synthesizes executive bullet points and typed Recharts JSON specifications.
+* **`backend/app/agent/graph.py`**: LangGraph state machine with 3-attempt autonomous reflection loop.
+* **`backend/app/api/v1/chat.py`**: Synchronous (`POST /api/v1/chat`) and Server-Sent Events (`POST /api/v1/chat/stream`) endpoints.
+* **Testing Suite**: **35 automated unit and integration tests passing (`pytest`)** in <2s verifying multi-agent orchestration, SSE streaming, and the self-healing reflection cycle.
 
-With the backend foundation and DuckDB OLAP engine in place, we proceed to **Phase 3**:
+---
 
-1. **`backend/app/agent/llm_factory.py`**: Dual-provider LLM abstraction supporting Google AI Studio (Gemini 2.5 Flash free tier) and local Ollama (`qwen2.5-coder:7b`).
-2. **`backend/app/agent/state.py`**: Pydantic `AgentState` schema tracking user query, pruned schema, candidate SQL, AST validation status, execution outputs, reflection trace, and narrative visualization spec.
-3. **`backend/app/agent/nodes/`**:
-   * `schema_pruner.py`: Filters the schema down to only relevant tables and metrics.
-   * `sql_generator.py`: Generates few-shot DuckDB SQL grounded in `semantic_layer.yaml`.
-   * `sql_critic.py`: Adversarial QA evaluating logic, edge cases, and query plan efficiency.
-   * `query_executor.py`: Runs SQL against `DuckDBManager` with 3-attempt reflection loop.
-   * `storyteller.py`: Synthesizes executive bullet points and typed Recharts JSON specs.
-4. **`backend/app/api/v1/chat.py`**: Server-Sent Events (SSE) streaming endpoint for live real-time token/status streaming.
+## 🚀 Next Milestone: Phase 4 (Next.js 14 Frontend & Interactive Recharts Dashboard)
+
+With the multi-agent backend and streaming engine in place, we proceed to **Phase 4**:
+
+1. **Scaffold Next.js 14 Project** (`/frontend`): TypeScript, Tailwind CSS, `lucide-react`, `shadcn/ui`.
+2. **Adaptive Recharts Component** (`components/charts/AdaptiveChart.tsx`):
+   - Dynamically renders `<BarChart>`, `<LineChart>`, `<AreaChart>`, `<PieChart>`, or `<MetricCard>` from the agent's `chart_spec`.
+3. **Conversational SSE Stream Consumer** (`hooks/useAgentStream.ts`):
+   - Consumes `/api/v1/chat/stream` via `ReadableStreamDefaultReader` over HTTP POST.
+   - Shows live multi-agent thinking indicators (Orchestrator 🔍 -> SQL Engineer 📝 -> Critic 🛡️ -> DuckDB ⚡ -> Storyteller 📊).
+4. **SQL Inspector & Data Drawer**:
+   - Collapsible drawer displaying formatted SQL, execution latency, and CSV export.
+
 

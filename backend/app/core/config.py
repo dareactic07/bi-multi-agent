@@ -1,7 +1,7 @@
 """Application configuration management using Pydantic Settings."""
 
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     # DuckDB In-Memory OLAP Configuration
     DUCKDB_DATABASE_PATH: str = ":memory:"
     DUCKDB_ATTACH_SCHEMA: str = "public"
+
+    # LLM & Multi-Agent Configuration (Phase 3)
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5-coder:7b"
+    DEFAULT_LLM_PROVIDER: str = "gemini"  # "gemini" or "ollama"
+    MAX_REFLECTION_ATTEMPTS: int = 3
 
     # CORS Configuration
     CORS_ORIGINS: List[str] = [

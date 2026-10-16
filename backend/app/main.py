@@ -5,6 +5,7 @@ import logging
 from typing import Any, Dict
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
+from backend.app.api.v1.chat import router as chat_router
 from backend.app.api.v1.endpoints import router as api_v1_router
 from backend.app.core.config import get_settings
 from backend.app.db.duckdb_client import get_duckdb_manager
@@ -53,8 +54,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API v1 Router
+# Include API v1 Routers
 app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX)
+app.include_router(chat_router, prefix=f"{settings.API_V1_PREFIX}/chat", tags=["Chat & Agent Pod"])
 
 
 @app.get("/", tags=["Root"])
